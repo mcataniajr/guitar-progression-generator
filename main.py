@@ -2286,9 +2286,11 @@ assert_equal(  # the setup choices do not change when the progression is moved
 set_site_information(
     "Michael Catania Jr",
     "Builds guitar chord progressions with fingering diagrams from a key and a mood.",
-    "Chord shapes are standard open and barre guitar chords.",
-    "See the planning document in this repository.",
-    ["https://github.com/mcataniajr/guitar-progression-generator"],
+    "Chord shapes are standard open, barre and CAGED guitar chords. Built with the Drafter documentation "
+    "and help from Claude (Anthropic); the conversations are in the ai-conversations folder of the repository.",
+    "Planning documents are in the planning folder of this repository.",
+    ["https://github.com/mcataniajr/guitar-progression-generator",
+     "https://mcataniajr.github.io/guitar-progression-generator/"],
 )
 
 start_server(State("C", "Joyful", 4, False, False, 0, [], []))
