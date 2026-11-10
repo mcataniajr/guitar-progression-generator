@@ -2293,4 +2293,4 @@ set_site_information(
      "https://mcataniajr.github.io/guitar-progression-generator/"],
 )
 
-start_server(State("C", "Joyful", 4, False, False, 0, [], []))
+start_server(State("G", "Joyful", 4, False, False, 0, [], []))
