@@ -32,14 +32,14 @@ Made by Michael Catania Jr for a Computer Science final project at the Universit
 | Unit tests, type hints, docstrings | Bottom of `main.py`; every function has types and a docstring |
 | Planning documents | `planning/` folder |
 | Site information | `set_site_information(...)` at the bottom of `main.py` |
-| AI conversations | `ai-conversations/` folder |
+| AI conversation | `claude-conversation.md` |
 
 ## Repository contents
 - `main.py`: the whole Drafter app, with its unit tests
 - `planning/`: the requirements plan and the brainstorming and design worksheets
-- `ai-conversations/`: the conversations with Claude (Anthropic) used while building the project
+- `claude-conversation.md`: the conversation with Claude (Anthropic) used while building the project
 - `.github/workflows/`: the GitHub Pages deployment and type check
 
 ## Use of AI
-I used Claude (Anthropic) to help plan, write, and test this project. Every conversation is saved in the
-`ai-conversations/` folder.
+I used Claude (Anthropic) to help plan, write, and test this project. The conversation is saved as
+`claude-conversation.md`.
