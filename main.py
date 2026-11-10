@@ -1,5 +1,6 @@
 """Guitar Chord Progression Generator: a Drafter web app."""
 from dataclasses import dataclass, field
+from typing import Any
 from drafter import *
 
 # Website settings (these must come before start_server, so they are kept right after the imports)
@@ -757,13 +758,12 @@ def make_chord_block(chord: Chord, width: int, color: str, capo: int) -> Div:
     """
     name = display_chord_name(chord)
     sounds_as = ""
+    diagram: SVG | str = "(no diagram yet)"
     if capo > 0:
         sounds_as = "sounds as " + sounding_chord_name(chord, capo)
     if len(chord.frets) == 6:
         height = width * 13 // 10  # the diagram is drawn on a 100 by 130 grid, so the height keeps that shape
         diagram = SVG(draw_diagram(chord.frets), width=width, height=height, viewBox="0 0 100 130")
-    else:
-        diagram = "(no diagram yet)"
     return Div(Header(name, 3), diagram, "\n", chord.numeral, "\n", sounds_as, style_border=card_border(color),
                style_border_radius=CARD_RADIUS, style_padding=CARD_PADDING, style_margin=CARD_MARGIN,
                style_display="inline-block")
@@ -877,7 +877,7 @@ def find_chord_position(chords: list[Chord], name: str) -> int:
 
 def distinct_chords(chords: list[Chord]) -> list[Chord]:
     """Return the chords in order with repeats removed, so each chord gets only one details button."""
-    result = []
+    result: list[Chord] = []
     for chord in chords:
         if find_chord_position(result, chord.name) == -1:
             result.append(chord)
@@ -887,6 +887,11 @@ def distinct_chords(chords: list[Chord]) -> list[Chord]:
 # ----------------------------------------------------------------------------------------------
 # Routes
 # ----------------------------------------------------------------------------------------------
+
+def one_argument(name: str, value: str) -> list[Any]:
+    """Return the argument list for a Button that sends one value (name) to its route."""
+    return [Argument(name, value)]
+
 
 def make_nav(state: State) -> Row:
     """Build the row of navigation buttons shown at the top of every page that has no inputs.
@@ -904,7 +909,8 @@ def make_nav(state: State) -> Row:
 
 def make_setup_page(state: State, error_message: str) -> Page:
     """Build the setup page (the home page), with an error message at the top if there is one."""
-    content = [Header("Chord Progression Generator"), SVG(draw_guitar(), width=300, height=100, viewBox="0 0 300 100")]
+    content: list[Any] = [Header("Chord Progression Generator"),
+                          SVG(draw_guitar(), width=300, height=100, viewBox="0 0 300 100")]
     if error_message != "":
         content.append(error_message)
         content.append("\n")
@@ -979,7 +985,7 @@ def generate(state: State, key: str, mood: str, length: int, use_sevenths: bool,
 
 def make_result_page(state: State, message: str) -> Page:
     """Build the result page, with a message (an error or a confirmation) near the top if there is one."""
-    content = [make_nav(state)]
+    content: list[Any] = [make_nav(state)]
     if message != "":
         content.append(message)
         content.append("\n")
@@ -1005,7 +1011,7 @@ def make_result_page(state: State, message: str) -> Page:
     content.append("\n")
     content.append(Header("Look closer at a chord", 2))
     for chord in distinct_chords(state.current_progression):
-        content.append(Button(display_chord_name(chord), "chord_detail", [Argument("name", chord.name)]))
+        content.append(Button(display_chord_name(chord), "chord_detail", one_argument("name", chord.name)))
     content.append(Header("Transpose", 2))
     content.append(Button("Down a half step", "transpose_down"))
     content.append(Button("Up a half step", "transpose_up"))
@@ -1070,7 +1076,7 @@ def make_save_page(state: State, message: str, typed_name: str) -> Page:
     typed_name is put back in the text box, so the user does not have to retype it after an error.
     """
     current_key = transposed_key_name(state.progression_key, state.transpose_steps)
-    content = [Header("Save Progression")]
+    content: list[Any] = [Header("Save Progression")]
     if message != "":
         content.append(message)
         content.append("\n")
@@ -1134,10 +1140,11 @@ def make_listen_content(chord: Chord, capo: int) -> list:
     Drafter plays one note at a time, so the strum plays the notes quickly one after another, low to high.
     """
     pitches = chord_pitch_names(chord, capo)
-    strum_notes = []
+    strum_notes: list[Any] = []
     for pitch in pitches:
         strum_notes.append((pitch, 1))
-    content = [Header("Listen", 2), "Strum the chord: ", Melody(strum_notes, tempo=300, waveform="triangle"), "\n"]
+    content: list[Any] = [Header("Listen", 2), "Strum the chord: ",
+                          Melody(strum_notes, tempo=300, waveform="triangle"), "\n"]
     content.append("Or listen to one string at a time:\n")
     for pitch in pitches:
         content.append(Div(display_pitch_name(pitch), "\n", Tone(pitch, duration=1000, waveform="triangle"),
@@ -1169,7 +1176,7 @@ def make_caged_content(chord: Chord, capo: int) -> list:
     target = chord
     if capo > 0:
         target = Chord(chord.name, transpose_note(chord.root, capo), chord.quality, [], False)
-    content = [Header("Five ways to play " + display_chord_name(target) + " (the CAGED system)", 2)]
+    content: list[Any] = [Header("Five ways to play " + display_chord_name(target) + " (the CAGED system)", 2)]
     if capo > 0:
         content.append("These are the ways to play the sounding chord without a capo.\n")
     content.append("These are the shapes of the open C, A, G, E, and D chords, slid up the neck to the right place. ")
@@ -1184,7 +1191,7 @@ def make_detail_page(chord: Chord, state: State) -> Page:
     """Build the detail page for one chord."""
     name = display_chord_name(chord)
     capo = state.capo
-    content = [make_nav(state), Header(name)]
+    content: list[Any] = [make_nav(state), Header(name)]
     content.append(name + " is a " + QUALITY_LABEL[chord.quality] + ".\n")
     if capo > 0:
         content.append("With the capo on fret " + str(capo) + ", this shape sounds as "
@@ -1240,7 +1247,7 @@ def pattern_text(numerals: list[str]) -> str:
 
 def make_mood_guide_page(state: State, message: str) -> Page:
     """Build the mood guide page: every mood with its description, pattern, and an example in the key of G."""
-    content = [make_nav(state), Header("Mood Guide")]
+    content: list[Any] = [make_nav(state), Header("Mood Guide")]
     if message != "":
         content.append(message)
         content.append("\n")
@@ -1272,7 +1279,7 @@ def make_mood_guide_page(state: State, message: str) -> Page:
         content.append(Div(Header(mood, 2, style_color=color), MOOD_DESCRIPTIONS[mood] + "\n",
                            "Pattern: " + pattern_text(MOOD_TEMPLATES[mood][0]) + "\n",
                            "In " + GUIDE_KEY + ": " + chords_text(example) + "\n", barre_note,
-                           Button("Use " + mood, "choose_mood", [Argument("mood", mood)]),
+                           Button("Use " + mood, "choose_mood", one_argument("mood", mood)),
                            style_border=card_border(color), style_border_radius=CARD_RADIUS,
                            style_padding=CARD_PADDING, style_margin=CARD_MARGIN))
     return Page(state, content)
@@ -1312,7 +1319,7 @@ NO_LONGER_EXISTS = "That progression no longer exists."
 
 def make_saved_page(state: State, message: str) -> Page:
     """Build the page that lists every saved progression, with a message near the top if there is one."""
-    content = [make_nav(state), Header("Saved Progressions")]
+    content: list[Any] = [make_nav(state), Header("Saved Progressions")]
     if message != "":
         content.append(message)
         content.append("\n")
@@ -1324,9 +1331,9 @@ def make_saved_page(state: State, message: str) -> Page:
         title = progression.name + " (" + progression.mood + " in " + progression.key + ")"
         content.append(Div(Header(title, 2, style_color=color),
                            chords_text(progression.chords) + capo_suffix(progression.capo) + "\n",
-                           Row(Button("View", "view_progression", [Argument("name", progression.name)]),
-                               Button("Rename", "rename_page", [Argument("name", progression.name)]),
-                               Button("Delete", "confirm_delete", [Argument("name", progression.name)]),
+                           Row(Button("View", "view_progression", one_argument("name", progression.name)),
+                               Button("Rename", "rename_page", one_argument("name", progression.name)),
+                               Button("Delete", "confirm_delete", one_argument("name", progression.name)),
                                style_gap="8px", style_flex_wrap="wrap"),
                            style_border=card_border(color), style_border_radius=CARD_RADIUS,
                            style_padding=CARD_PADDING, style_margin=CARD_MARGIN))
@@ -1357,7 +1364,7 @@ def view_progression(state: State, name: str) -> Page:
         return make_saved_page(state, NO_LONGER_EXISTS)
     progression = state.saved_progressions[position]
     color = mood_color(progression.mood)
-    content = [make_nav(state), Header(progression.name, style_color=color)]
+    content: list[Any] = [make_nav(state), Header(progression.name, style_color=color)]
     content.append(progression.mood + " progression in " + progression.key)
     content.append("\n")
     if progression.capo > 0:
@@ -1366,8 +1373,8 @@ def view_progression(state: State, name: str) -> Page:
     for chord in progression.chords:
         content.append(make_chord_block(chord, SAVED_DIAGRAM_WIDTH, color, progression.capo))
     content.append("\n")
-    content.append(Row(Button("Rename", "rename_page", [Argument("name", progression.name)]),
-                       Button("Delete", "confirm_delete", [Argument("name", progression.name)]),
+    content.append(Row(Button("Rename", "rename_page", one_argument("name", progression.name)),
+                       Button("Delete", "confirm_delete", one_argument("name", progression.name)),
                        style_gap="8px", style_flex_wrap="wrap"))
     return Page(state, content)
 
@@ -1380,9 +1387,9 @@ def confirm_delete(state: State, name: str) -> Page:
     """
     if find_position(state.saved_progressions, name) == -1:
         return make_saved_page(state, NO_LONGER_EXISTS)
-    content = [Header("Delete Progression?")]
+    content: list[Any] = [Header("Delete Progression?")]
     content.append('Are you sure you want to delete "' + name + '"? This cannot be undone.\n')
-    content.append(Row(Button("Yes, delete it", "delete_progression", [Argument("name", name)]),
+    content.append(Row(Button("Yes, delete it", "delete_progression", one_argument("name", name)),
                        Button("No, keep it", "view_saved"), style_gap="8px", style_flex_wrap="wrap"))
     return Page(state, content)
 
@@ -1399,7 +1406,7 @@ def delete_progression(state: State, name: str) -> Page:
 
 def make_rename_page(state: State, name: str, message: str, typed_name: str) -> Page:
     """Build the page where the user types a new name for the saved progression called name."""
-    content = [Header("Rename Progression")]
+    content: list[Any] = [Header("Rename Progression")]
     if message != "":
         content.append(message)
         content.append("\n")
@@ -1408,8 +1415,8 @@ def make_rename_page(state: State, name: str, message: str, typed_name: str) -> 
     content.append("New name: ")
     content.append(TextBox("new_name", typed_name))
     content.append("\n")
-    content.append(Button("Rename", "rename_progression", [Argument("name", name)]))
-    content.append(Button("Cancel", "cancel_rename", [Argument("name", name)]))
+    content.append(Button("Rename", "rename_progression", one_argument("name", name)))
+    content.append(Button("Cancel", "cancel_rename", one_argument("name", name)))
     return Page(state, content)
 
 
