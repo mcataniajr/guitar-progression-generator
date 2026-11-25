@@ -108,6 +108,26 @@ MOOD_DESCRIPTIONS = {
               "blues sound. It always has 12 chords, whatever length you pick.",
 }
 
+# A strumming pattern for each mood. A pattern is one bar of 4 beats counted "1 & 2 & 3 & 4 &", so it has 8 slots.
+# D is a down strum, U is an up strum, and - means no strum (the chord keeps ringing). Play one bar for each chord.
+STRUM_COUNTS = ["1", "&", "2", "&", "3", "&", "4", "&"]
+STRUM_PATTERNS = {
+    "Joyful": ["D", "-", "D", "U", "-", "U", "D", "U"],
+    "Peaceful": ["D", "-", "D", "-", "D", "-", "D", "-"],
+    "Sorrowful": ["D", "-", "-", "-", "D", "-", "D", "U"],
+    "Mysterious": ["D", "-", "-", "U", "-", "-", "D", "U"],
+    "Bluesy": ["D", "U", "D", "U", "D", "U", "D", "U"],
+}
+STRUM_DESCRIPTIONS = {
+    "Joyful": "Bouncy and steady: the classic down, down-up, up-down-up strum.",
+    "Peaceful": "Slow and soft: one gentle down strum on every beat.",
+    "Sorrowful": "Slow and sparse: let the chord ring, then pick up the strumming at the end of the bar.",
+    "Mysterious": "Off the beat and spacious: the gaps keep it feeling unsettled.",
+    "Bluesy": "Shuffle feel: alternate down and up strums and swing them (long, short, long, short).",
+}
+STRUM_LEGEND = "D = down strum, U = up strum, - = no strum (let the chord ring). Play one bar for each chord."
+STRUM_SLOT_WIDTH = 40  # the width in pixels of one slot of a strumming pattern drawing
+
 # The open chords, typed by hand. Fret number for each string from low E to high e.
 # 0 means an open string and -1 means a muted string.
 # Every other chord is made from the barre shapes below by build_fingering_dictionary.
@@ -797,6 +817,77 @@ def draw_guitar() -> str:
 
 
 # ----------------------------------------------------------------------------------------------
+# Strumming helpers and button cards
+# ----------------------------------------------------------------------------------------------
+
+def strum_pattern_text(mood: str) -> str:
+    """Write the mood's strumming pattern as one line of text, such as 'D - D U - U D U'."""
+    text = ""
+    for strum in STRUM_PATTERNS[mood]:
+        if text != "":
+            text = text + " "
+        text = text + strum
+    return text
+
+
+def svg_text(x: int, y: int, text: str, size: int, fill: str) -> str:
+    """Return the SVG text for one centered piece of text (an & is written as &amp;, which SVG needs)."""
+    return ('<text x="' + str(x) + '" y="' + str(y) + '" font-size="' + str(size)
+            + '" font-family="Arial, sans-serif" font-weight="bold" text-anchor="middle" fill="' + fill + '">'
+            + text.replace("&", "&amp;") + '</text>')
+
+
+def draw_strum_slot(slot: int, strum: str, color: str) -> str:
+    """Return the SVG text for one slot of a strumming pattern: its count on top and a box for the strum below.
+
+    A down strum is a dark box, an up strum is a box in the mood's color, and no strum is an empty box.
+    """
+    left = slot * STRUM_SLOT_WIDTH
+    center = left + STRUM_SLOT_WIDTH // 2
+    box_style = 'fill="none" stroke="#bbbbbb" stroke-width="1.5"'
+    letter_color = "#999999"
+    if strum == "D":
+        box_style = 'fill="#333333" stroke="#333333" stroke-width="1.5"'
+        letter_color = "white"
+    elif strum == "U":
+        box_style = 'fill="' + color + '" fill-opacity="0.35" stroke="' + color + '" stroke-width="1.5"'
+        letter_color = "#222222"
+    box = ('<rect x="' + str(left + 3) + '" y="22" width="' + str(STRUM_SLOT_WIDTH - 6) + '" height="34" rx="6" '
+           + box_style + ' />')
+    return svg_text(center, 15, STRUM_COUNTS[slot], 13, "#555555") + box + svg_text(center, 45, strum, 16, letter_color)
+
+
+def draw_strum_pattern(pattern: list[str], color: str) -> str:
+    """Return the SVG text that draws a strumming pattern as a row of boxes, with the beat counts above them."""
+    parts = ""
+    for slot in range(len(pattern)):
+        parts = parts + draw_strum_slot(slot, pattern[slot], color)
+    return parts
+
+
+def make_strum_card(mood: str) -> Div:
+    """Build the card that shows the strumming pattern for a mood, with a drawing, its description, and a key."""
+    color = mood_color(mood)
+    width = len(STRUM_PATTERNS[mood]) * STRUM_SLOT_WIDTH
+    return Div(Header(mood + " strumming pattern", 3, style_color=color), STRUM_DESCRIPTIONS[mood] + "\n",
+               SVG(draw_strum_pattern(STRUM_PATTERNS[mood], color), width=width, height=60,
+                   viewBox="0 0 " + str(width) + " 60"), "\n",
+               "Pattern: " + strum_pattern_text(mood) + " (counted 1 & 2 & 3 & 4 &)\n", STRUM_LEGEND + "\n",
+               style_border=card_border(color), style_border_radius=CARD_RADIUS,
+               style_padding=CARD_PADDING, style_margin=CARD_MARGIN)
+
+
+def make_button_card(title: str, hint: str, buttons: list[Any]) -> Div:
+    """Build a card that groups related buttons under a heading, so each group is easy to tell apart.
+
+    Row(*buttons, ...) hands the buttons to Row one by one, because Row takes its content as separate arguments.
+    """
+    return Div(Header(title, 2), hint + "\n", Row(*buttons, style_gap="8px", style_flex_wrap="wrap"),
+               style_border=card_border(NEUTRAL_COLOR), style_border_radius=CARD_RADIUS,
+               style_padding=CARD_PADDING, style_margin=CARD_MARGIN)
+
+
+# ----------------------------------------------------------------------------------------------
 # Chord detail helpers: which notes are in a chord, and which notes the guitar strings play
 # ----------------------------------------------------------------------------------------------
 
@@ -1009,16 +1100,20 @@ def make_result_page(state: State, message: str) -> Page:
     for chord in state.current_progression:
         content.append(make_chord_block(chord, RESULT_DIAGRAM_WIDTH, color, state.capo))
     content.append("\n")
-    content.append(Header("Look closer at a chord", 2))
+    if state.progression_mood in STRUM_PATTERNS:
+        content.append(make_strum_card(state.progression_mood))
+    chord_buttons: list[Any] = []
     for chord in distinct_chords(state.current_progression):
-        content.append(Button(display_chord_name(chord), "chord_detail", one_argument("name", chord.name)))
-    content.append(Header("Transpose", 2))
-    content.append(Button("Down a half step", "transpose_down"))
-    content.append(Button("Up a half step", "transpose_up"))
+        chord_buttons.append(Button(display_chord_name(chord), "chord_detail", one_argument("name", chord.name)))
+    content.append(make_button_card("Look closer at a chord", "Open a chord to see its notes, hear it, and see more "
+                                    "ways to play it.", chord_buttons))
+    transpose_buttons: list[Any] = [Button("\u25bc Down a half step", "transpose_down"),
+                                    Button("\u25b2 Up a half step", "transpose_up")]
     if state.transpose_steps != 0:
-        content.append(Button("Back to original key", "reset_transpose"))
-    content.append(Header("Keep it", 2))
-    content.append(Button("Save this progression", "save_page"))
+        transpose_buttons.append(Button("\u21ba Back to original key", "reset_transpose"))
+    content.append(make_button_card("Transpose", "Move every chord up or down to fit your voice.", transpose_buttons))
+    content.append(make_button_card("Keep it", "Give this progression a name so you can find it again later.",
+                                    [Button("Save this progression", "save_page")]))
     return Page(state, content)
 
 
@@ -1255,6 +1350,10 @@ def make_mood_guide_page(state: State, message: str) -> Page:
                    "starts on (I is the first note, V is the fifth). A capital letter means a major chord, a small "
                    "letter means a minor chord, and a 7 means a seventh chord.\n")
     content.append("The examples are all in the key of " + GUIDE_KEY + " and follow your 7th chord choice.\n")
+    content.append(Header("How to read a strumming pattern", 2))
+    content.append("Every mood also has a strumming pattern, which tells you how to play each chord. A pattern is one "
+                   "bar of four beats counted 1 & 2 & 3 & 4 &, and you play one bar for each chord. " + STRUM_LEGEND
+                   + "\n")
     for mood in MOOD_OPTIONS:
         color = mood_color(mood)
         example = build_current_progression(GUIDE_KEY, 0, mood, state.use_sevenths, 4)
@@ -1278,6 +1377,7 @@ def make_mood_guide_page(state: State, message: str) -> Page:
             barre_note = barre_note + "\n"
         content.append(Div(Header(mood, 2, style_color=color), MOOD_DESCRIPTIONS[mood] + "\n",
                            "Pattern: " + pattern_text(MOOD_TEMPLATES[mood][0]) + "\n",
+                           "Strumming pattern: " + strum_pattern_text(mood) + " (" + STRUM_DESCRIPTIONS[mood] + ")\n",
                            "In " + GUIDE_KEY + ": " + chords_text(example) + "\n", barre_note,
                            Button("Use " + mood, "choose_mood", one_argument("mood", mood)),
                            style_border=card_border(color), style_border_radius=CARD_RADIUS,
@@ -1373,6 +1473,8 @@ def view_progression(state: State, name: str) -> Page:
     for chord in progression.chords:
         content.append(make_chord_block(chord, SAVED_DIAGRAM_WIDTH, color, progression.capo))
     content.append("\n")
+    if progression.mood in STRUM_PATTERNS:
+        content.append(make_strum_card(progression.mood))
     content.append(Row(Button("Rename", "rename_page", one_argument("name", progression.name)),
                        Button("Delete", "confirm_delete", one_argument("name", progression.name)),
                        style_gap="8px", style_flex_wrap="wrap"))
@@ -2279,6 +2381,58 @@ assert_has(transpose_up(stale_check()), "Joyful progression in G#")
 assert_equal(  # the setup choices do not change when the progression is moved
     [transpose_up(stale_check()).state.key, transpose_up(stale_check()).state.mood], ["A", "Mysterious"])
 
+# Strumming patterns and button cards
+def strum_patterns_are_valid() -> bool:
+    """Check that every mood has a pattern with 8 slots that only uses D, U and -, and that it has a description."""
+    for mood in MOOD_OPTIONS:
+        if mood not in STRUM_PATTERNS or mood not in STRUM_DESCRIPTIONS:
+            return False
+        if len(STRUM_PATTERNS[mood]) != len(STRUM_COUNTS):
+            return False
+        for strum in STRUM_PATTERNS[mood]:
+            if strum != "D" and strum != "U" and strum != "-":
+                return False
+    return True
+
+
+def count_text(text: str, piece: str) -> int:
+    """Count how many times a piece of text appears in a longer text."""
+    return len(text.split(piece)) - 1
+
+
+assert_equal(strum_patterns_are_valid(), True)
+assert_equal(sorted(STRUM_PATTERNS.keys()), sorted(MOOD_OPTIONS))
+assert_equal(strum_pattern_text("Joyful"), "D - D U - U D U")
+assert_equal(strum_pattern_text("Peaceful"), "D - D - D - D -")
+assert_equal(strum_pattern_text("Bluesy"), "D U D U D U D U")
+assert_equal(count_text("a - b - c", " - "), 2)
+assert_equal(count_text("abc", "x"), 0)
+assert_equal(svg_text(5, 6, "&", 12, "red").count("&amp;"), 1)  # an & must be escaped inside SVG text
+assert_equal(count_text(draw_strum_pattern(STRUM_PATTERNS["Joyful"], "goldenrod"), "<rect"), 8)  # one box per slot
+assert_equal(count_text(draw_strum_pattern(STRUM_PATTERNS["Joyful"], "goldenrod"), "<text"), 16)  # a count and a strum
+assert_equal(count_text(draw_strum_pattern(STRUM_PATTERNS["Joyful"], "goldenrod"), "&amp;"), 4)  # four "and" counts
+assert_equal(count_text(draw_strum_pattern(STRUM_PATTERNS["Joyful"], "goldenrod"), ">D<"), 3)  # three down strums
+assert_equal(count_text(draw_strum_pattern(STRUM_PATTERNS["Joyful"], "goldenrod"), ">U<"), 3)  # three up strums
+assert_equal(draw_strum_pattern([], "teal"), "")
+assert_has(show_result(state_with_progression("C", "Joyful")), "Joyful strumming pattern")
+assert_has(show_result(state_with_progression("C", "Joyful")), STRUM_DESCRIPTIONS["Joyful"])
+assert_has(show_result(state_with_progression("C", "Joyful")), "Pattern: D - D U - U D U")
+assert_has(show_result(state_with_progression("C", "Joyful")), "D = down strum")
+assert_has(show_result(state_with_progression("C", "Joyful")), "<rect")  # the pattern is drawn
+assert_has(show_result(state_with_progression("C", "Joyful")), "Look closer at a chord")
+assert_has(show_result(state_with_progression("C", "Joyful")), "Open a chord to see its notes")
+assert_has(show_result(state_with_progression("C", "Joyful")), "\u25bc Down a half step")
+assert_has(show_result(state_with_progression("C", "Joyful")), "\u25b2 Up a half step")
+assert_has(transpose_up(state_with_progression("C", "Joyful")), "\u21ba Back to original key")
+for strum_mood in MOOD_OPTIONS:
+    assert_has(show_result(state_with_progression("C", strum_mood)), strum_mood + " strumming pattern")
+assert_has(view_progression(state_with_two_saved(), "Rainy day"), "Sorrowful strumming pattern")
+assert_has(view_progression(state_with_two_saved(), "Campfire"), "Pattern: D - D U - U D U")
+assert_has(view_mood_guide(fresh_state()), "How to read a strumming pattern")
+assert_has(view_mood_guide(fresh_state()), STRUM_LEGEND)
+for strum_mood in MOOD_OPTIONS:
+    assert_has(view_mood_guide(fresh_state()), "Strumming pattern: " + strum_pattern_text(strum_mood))
+
 # ----------------------------------------------------------------------------------------------
 # Start the site
 # ----------------------------------------------------------------------------------------------
@@ -2294,3 +2448,4 @@ set_site_information(
 )
 
 start_server(State("G", "Joyful", 4, False, False, 0, [], []))
+
